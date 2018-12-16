@@ -1,5 +1,6 @@
 package com.web.domain;
 
+import com.web.domain.enums.SocialType;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,6 +27,13 @@ public class User {
 
     @Column
     private String email;
+
+    @Column
+    private String principal;
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    private SocialType socialType;
     @Column
     private LocalDateTime createDate;
 
@@ -33,10 +41,12 @@ public class User {
     private LocalDateTime updateDate;
 
     @Builder
-    public User(String name, String password, String email, LocalDateTime createDate, LocalDateTime updateDate) {
+    public User(String name, String password, String email, String principal, SocialType socialType, LocalDateTime createDate, LocalDateTime updateDate) {
         this.name = name;
         this.password = password;
         this.email = email;
+        this.principal = principal;
+        this.socialType = socialType;
         this.createDate = createDate;
         this.updateDate = updateDate;
     }

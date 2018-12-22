@@ -1,31 +1,24 @@
 package com.web.config;
 
-import com.web.domain.enums.SocialType;
-import com.web.oauth.ClientResources;
-import com.web.oauth.UserTokenService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import com.web.oauth.CustomOAuth2Provider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.security.oauth2.client.OAuth2ClientProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.oauth2.client.OAuth2ClientContext;
-import org.springframework.security.oauth2.client.OAuth2RestTemplate;
-import org.springframework.security.oauth2.client.filter.OAuth2ClientAuthenticationProcessingFilter;
-import org.springframework.security.oauth2.client.filter.OAuth2ClientContextFilter;
-import org.springframework.security.oauth2.config.annotation.web.configuration.EnableOAuth2Client;
+import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.web.filter.CharacterEncodingFilter;
-import org.springframework.web.filter.CompositeFilter;
 
-import javax.servlet.Filter;
-import javax.servlet.FilterRegistration;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import static com.web.domain.enums.SocialType.FACEBOOK;
 import static com.web.domain.enums.SocialType.GOOGLE;
@@ -33,95 +26,81 @@ import static com.web.domain.enums.SocialType.KAKAO;
 
 @Configuration
 @EnableWebSecurity
-@EnableOAuth2Client
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-
-    @Autowired
-    private OAuth2ClientContext oauth2ClientContext;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
-
         http
-            .authorizeRequests()
-                .antMatchers("/", "/login/**", "/css/**", "/images/**", "/js/**"
-                            , "/console/**"
-                ).permitAll()
+                .authorizeRequests()
+                .antMatchers("/", "/oauth2/**", "/login/**", "/css/**", "/images/**", "/js/**", "/console/**").permitAll()
+                .antMatchers("/facebook").hasAuthority(FACEBOOK.getRoleType())
+                .antMatchers("/google").hasAuthority(GOOGLE.getRoleType())
+                .antMatchers("/kakao").hasAuthority(KAKAO.getRoleType())
                 .anyRequest().authenticated()
-            .and()
-                .headers().frameOptions().disable() //응답에 해당하는 헤더 .XFrameOptionHeaderWriter의 최적화 설정을 허용하지 않음
-            .and()
+
+                .and()
+                .oauth2Login()
+                .defaultSuccessUrl("/loginSuccess")
+                .failureUrl("/loginFailure")
+
+                .and()
+                .headers().frameOptions().disable()
+
+                .and()
                 .exceptionHandling()
-                .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")) // 인증되지 않은 사용자가 허용되지 않은 경로로 리퀘스트를 요청할 경우 '
-            .and()                                                                          // login으로 이동
+                .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
+
+                .and()
                 .formLogin()
                 .successForwardUrl("/board/list")
-            .and()
+
+                .and()
                 .logout()
                 .logoutUrl("/logout")
                 .logoutSuccessUrl("/")
                 .deleteCookies("JSESSIONID")
                 .invalidateHttpSession(true)
-            .and()
-                .addFilterBefore(filter, CsrfFilter.class) // 첫번째 인자보다 먼저 시작될 필터를 등록 즉, 문자 인코딩 필터보다 CsrfFilter가 먼저
-                .addFilterBefore(oauth2Filter(), BasicAuthenticationFilter.class)
+
+                .and()
+                .addFilterBefore(filter, CsrfFilter.class)
                 .csrf().disable();
     }
 
     @Bean
-    public FilterRegistrationBean oauth2ClientFilterRegistration(OAuth2ClientContextFilter filter) {
-        FilterRegistrationBean registration = new FilterRegistrationBean();
-        registration.setFilter(filter);
-        registration.setOrder(-100);
+    public ClientRegistrationRepository clientRegistrationRepository(OAuth2ClientProperties oAuth2ClientProperties, @Value("${custom.oauth2.kakao.client-id}") String kakaoClientId) {
+        List<ClientRegistration> registrations = oAuth2ClientProperties.getRegistration().keySet().stream()
+                .map(client -> getRegistration(oAuth2ClientProperties, client))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
 
-        return registration;
+        registrations.add(CustomOAuth2Provider.KAKAO.getBuilder("kakao")
+                .clientId(kakaoClientId)
+                .clientSecret("test")
+                .jwkSetUri("test")
+                .build());
+
+        return new InMemoryClientRegistrationRepository(registrations);
     }
 
-    private Filter oauth2Filter() {
-        List<Filter> filters = new ArrayList<>();
-        filters.add(oauth2Filter(facebook(), "/login/facebook", FACEBOOK));
-        filters.add(oauth2Filter(google(), "/login/google", GOOGLE));
-        filters.add(oauth2Filter(kakao(), "/login/kakao", KAKAO));
-
-        CompositeFilter filter = new CompositeFilter();
-        filter.setFilters(filters);
-
-        return filter;
-    }
-
-    private Filter oauth2Filter(ClientResources client, String path, SocialType socialType) {
-        OAuth2RestTemplate template = new OAuth2RestTemplate(client.getClient(), oauth2ClientContext);
-
-        OAuth2ClientAuthenticationProcessingFilter filter =
-                new OAuth2ClientAuthenticationProcessingFilter(path);
-       filter.setRestTemplate(template);
-       filter.setTokenServices(new UserTokenService(client, socialType));
-       filter.setAuthenticationSuccessHandler((request, response, authentication)
-            -> response.sendRedirect("/" + socialType.getValue() + "/complete"));
-        filter.setAuthenticationFailureHandler((request, response, exception) -> response.sendRedirect("/error"));
-        return filter;
-    }
-
-    @Bean
-    @ConfigurationProperties("facebook") // 어노테이션 접두사를 사용하여 바인딩
-    public ClientResources facebook() {
-        return new ClientResources();
-    }
-
-    @Bean
-    @ConfigurationProperties("google")
-    public ClientResources google() {
-        return new ClientResources();
-    }
-
-    @Bean
-    @ConfigurationProperties("kakao")
-    public ClientResources kakao() {
-        return new ClientResources();
+    private ClientRegistration getRegistration(OAuth2ClientProperties clientProperties, String client) {
+        if ("google".equals(client)) {
+            OAuth2ClientProperties.Registration registration = clientProperties.getRegistration().get("google");
+            return CommonOAuth2Provider.GOOGLE.getBuilder(client)
+                    .clientId(registration.getClientId())
+                    .clientSecret(registration.getClientSecret())
+                    .scope("email", "profile")
+                    .build();
+        }
+        if ("facebook".equals(client)) {
+            OAuth2ClientProperties.Registration registration = clientProperties.getRegistration().get("facebook");
+            return CommonOAuth2Provider.FACEBOOK.getBuilder(client)
+                    .clientId(registration.getClientId())
+                    .clientSecret(registration.getClientSecret())
+                    .userInfoUri("https://graph.facebook.com/me?fields=id,name,email,link")
+                    .scope("email")
+                    .build();
+        }
+        return null;
     }
 }
-
-/**
- 소셜 미디어 리소스 정보는 시큐리티 설정에서 사용하기 때문에 빈으로 등록
- **/

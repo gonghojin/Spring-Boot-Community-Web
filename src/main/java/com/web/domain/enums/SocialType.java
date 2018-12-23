@@ -4,7 +4,7 @@ public enum SocialType {
 
     FACEBOOK("facebook"),
     GOOGLE("google"),
-    KAKAO("KAKAO");
+    KAKAO("kakao");
 
     private final String ROLE_PREFIX = "ROLE_";
     private final String name;
@@ -22,6 +22,6 @@ public enum SocialType {
     }
 
     public boolean isEquals(String authority) {
-        return this.getRoleType().equals(authority);
+        return this.getValue().equals(authority);
     }
 }

@@ -18,10 +18,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-import javax.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+
+import javax.servlet.http.HttpSession;
 
 import static com.web.domain.enums.SocialType.FACEBOOK;
 import static com.web.domain.enums.SocialType.GOOGLE;
@@ -32,38 +33,31 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
 
     private UserRepository userRepository;
 
-    /*
-        해당하는 어노테이션 타입이 명시되어 있는지 확인하는 로직
-     */
-    @Override
-    public boolean supportsParameter(MethodParameter parameter) {
-        return parameter.getParameterAnnotation(SocialUser.class) != null &&
-                parameter.getParameterType().equals(User.class);
+    public UserArgumentResolver(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Override
-    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
-        HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
-                .getRequest().getSession();
+    public boolean supportsParameter(MethodParameter parameter) {
+        return parameter.getParameterAnnotation(SocialUser.class) != null && parameter.getParameterType().equals(User.class);
+    }
 
+    @Override
+    public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer, NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+        HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
         User user = (User) session.getAttribute("user");
-
         return getUser(user, session);
     }
 
     private User getUser(User user, HttpSession session) {
-        if (user == null) {
+        if(user == null) {
             try {
-
-                OAuth2AuthenticationToken authentication = (OAuth2AuthenticationToken) SecurityContextHolder.getContext()
-                        .getAuthentication();
+                OAuth2AuthenticationToken authentication = (OAuth2AuthenticationToken) SecurityContextHolder.getContext().getAuthentication();
                 Map<String, Object> map = authentication.getPrincipal().getAttributes();
+                User convertUser = convertUser(authentication.getAuthorizedClientRegistrationId(), map);
 
-                User converterUser = convertUser(authentication.getAuthorizedClientRegistrationId(), map);
-                user = userRepository.findByEmail(converterUser.getEmail());
-                if (user == null) {
-                    user = userRepository.save(converterUser);
-                }
+                user = userRepository.findByEmail(convertUser.getEmail());
+                if (user == null) { user = userRepository.save(convertUser); }
 
                 setRoleIfNotSame(user, authentication, map);
                 session.setAttribute("user", user);
@@ -71,22 +65,13 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
                 return user;
             }
         }
-
         return user;
-
     }
 
-
     private User convertUser(String authority, Map<String, Object> map) {
-        if (FACEBOOK.getValue().equals(authority)) {
-            return getModernUser(FACEBOOK, map);
-        } else if (GOOGLE.getValue().equals(authority)) {
-            return getModernUser(GOOGLE, map);
-        } else if (KAKAO.getValue().equals(authority)) {
-            // 카카오는 키의 네이밍 값이 타 소셜 미디어와 다름
-            return getKaKaoUser(map);
-        }
-
+        if(FACEBOOK.isEquals(authority)) return getModernUser(FACEBOOK, map);
+        else if(GOOGLE.isEquals(authority)) return getModernUser(GOOGLE, map);
+        else if(KAKAO.isEquals(authority)) return getKaKaoUser(map);
         return null;
     }
 
@@ -101,7 +86,7 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
     }
 
     private User getKaKaoUser(Map<String, Object> map) {
-        HashMap<String, String> propertyMap = (HashMap<String, String>) map.get("properties");
+        Map<String, String> propertyMap = (HashMap<String, String>) map.get("properties");
         return User.builder()
                 .name(propertyMap.get("nickname"))
                 .email(String.valueOf(map.get("kaccount_email")))
@@ -112,13 +97,8 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
     }
 
     private void setRoleIfNotSame(User user, OAuth2AuthenticationToken authentication, Map<String, Object> map) {
-        if (!authentication.getAuthorities().contains(new SimpleGrantedAuthority(user.getSocialType().getRoleType()))) {
-            SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken(map, "N/A",
-                            AuthorityUtils.createAuthorityList(user.getSocialType().getRoleType()))
-            );
-
+        if(!authentication.getAuthorities().contains(new SimpleGrantedAuthority(user.getSocialType().getRoleType()))) {
+            SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(map, "N/A", AuthorityUtils.createAuthorityList(user.getSocialType().getRoleType())));
         }
     }
-
 }

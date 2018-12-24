@@ -15,7 +15,8 @@
         <h1>게시글 등록</h1>
     </div>
     <br/>
-    <input id="board_idx" type="hidden" th:value="${board?.idx}"/>
+    <input type="hidden" id="board_idx" th:value="${board?.idx}"/>
+    <input type="hidden" id="board_create_date" th:value="${board?.createDate}"/>
     <table class="table">
         <tr>
             <th style="padding:13px  0 0 15px">게시판 선택</th>
@@ -62,12 +63,77 @@
         <a th:href="@{/board/list}" class="btn btn-default">목록으로</a>
     </div>
     <div class="pull-left">
-        <button th:if="!${board?.idx}" type="button" class="btn btn-primary">저장</button>
-        <button th:if="${board?.idx}" type="button" class="btn btn-info">수정</button>
-        <button th:if="${board?.idx}" type="button" class="btn btn-danger">삭제</button>
+        <button th:if="!${board?.idx}" type="button" id="insert" class="btn btn-primary">저장</button>
+        <button th:if="${board?.idx}" type="button" id="update" class="btn btn-info">수정</button>
+        <button th:if="${board?.idx}" type="button" id="delete" class="btn btn-danger">삭제</button>
     </div>
 
     <div th:replace="layout/footer::footer"></div>
 </div>
+<script th:src="@{/js/jquery.min.js}"/>
+<script th:if="!${board?.idx}">
+    $("#insert").click(function () {
+        var jsonData = JSON.stringify({
+            title: $('#board_title').val(),
+            subTitle: $('#board_sub_title').val(),
+            content: $('#board_content').val(),
+            boardType: $('#board_type option:selected').val()
+        });
+
+        $.ajax({
+            url: "http://localhost:8081/api/boards",
+            type: "POST",
+            data: jsonData,
+            contentType: "application/json",
+            dataType: "json",
+            success: function () {
+                alert("저장성공");
+                location.href = "/board/list";
+            },
+            error: function () {
+                alert("저장실패");
+            }
+        });
+    });
+</script>
+<script th:if="${board?.idx}">
+    $("#update").click(function () {
+        var jsonData = JSON.stringify({
+            title: $('#board_title').val(),
+            subTitle: $('#board_sub_title').val(),
+            content: $('#board_content').val(),
+            boardType: $('#board_type option:selected').val()
+        });
+
+        $.ajax({
+            url : "http://localhost:8081/api/boards/" + $("#board_idx").val(),
+            type : "POST",
+            data : jsonData,
+            contentType : "application/json",
+            dataType : "json",
+            success : function() {
+                alert("수정성공");
+                location.href = "/board/list";
+            },
+            error : function () {
+                alert("수정실패");
+            }
+        });
+
+        $("#delete").click(function (){
+            $.ajax({
+                url : "http://localhost:8081/api/boards" + $("#board_idx").val(),
+                type : "DELETE",
+                success : function() {
+                    alert("삭제성공");
+                    location.href = "/board/list";
+                },
+                error : function () {
+                    alert("삭제실패");
+                }
+            });
+        });
+    });
+</script>
 </body>
 </html>

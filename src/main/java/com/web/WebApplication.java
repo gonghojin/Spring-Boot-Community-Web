@@ -11,14 +11,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.IntStream;
 
+@EnableJpaAuditing
 @SpringBootApplication
 public class WebApplication implements WebMvcConfigurer {
 
@@ -41,7 +41,6 @@ public class WebApplication implements WebMvcConfigurer {
                     .name("havi")
                     .password("test")
                     .email("havi@gmail.com")
-                    .createDate(LocalDateTime.now())
                     .build()
             );
 
@@ -51,8 +50,6 @@ public class WebApplication implements WebMvcConfigurer {
                             .subTitle("순서" + index)
                             .content("콘텐츠")
                             .boardType(BoardType.free)
-                            .createdDate(LocalDateTime.now())
-                            .updatedDate(LocalDateTime.now())
                             .user(user)
                             .build()
                     )

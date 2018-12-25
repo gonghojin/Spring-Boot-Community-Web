@@ -81,7 +81,6 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
                 .email(String.valueOf(map.get("email")))
                 .principal(String.valueOf(map.get("id")))
                 .socialType(socialType)
-                .createDate(LocalDateTime.now())
                 .build();
     }
 
@@ -92,7 +91,6 @@ public class UserArgumentResolver implements HandlerMethodArgumentResolver {
                 .email(String.valueOf(map.get("kaccount_email")))
                 .principal(String.valueOf(map.get("id")))
                 .socialType(KAKAO)
-                .createDate(LocalDateTime.now())
                 .build();
     }
 

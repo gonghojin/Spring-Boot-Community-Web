@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @Table
-public class Board implements Serializable {
+public class Board extends  BaseTimeEntity implements Serializable {
 
     @Id
     @Column
@@ -33,24 +33,16 @@ public class Board implements Serializable {
     @Enumerated(EnumType.STRING)
     private BoardType boardType;
 
-    @Column
-    private LocalDateTime createdDate;
-
-    @Column
-    private LocalDateTime updatedDate;
-
     @OneToOne(fetch = FetchType.LAZY)
     private User user;
 
     @Builder
 
-    public Board(String title, String subTitle, String content, BoardType boardType, LocalDateTime createdDate, LocalDateTime updatedDate, User user) {
+    public Board(String title, String subTitle, String content, BoardType boardType, User user) {
         this.title = title;
         this.subTitle = subTitle;
         this.content = content;
         this.boardType = boardType;
-        this.createdDate = createdDate;
-        this.updatedDate = updatedDate;
         this.user = user;
     }
 }

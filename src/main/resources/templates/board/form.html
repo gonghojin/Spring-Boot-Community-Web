@@ -70,7 +70,7 @@
 
     <div th:replace="layout/footer::footer"></div>
 </div>
-<script th:src="@{/js/jquery.min.js}"/>
+<script th:src="@{/js/jquery.min.js}"></script>
 <script th:if="!${board?.idx}">
     $("#insert").click(function () {
         var jsonData = JSON.stringify({
@@ -106,34 +106,35 @@
         });
 
         $.ajax({
-            url : "http://localhost:8081/api/boards/" + $("#board_idx").val(),
-            type : "POST",
-            data : jsonData,
-            contentType : "application/json",
-            dataType : "json",
-            success : function() {
+            url: "http://localhost:8081/api/boards/" + $("#board_idx").val(),
+            type: "PUT",
+            data: jsonData,
+            contentType: "application/json",
+            dataType: "json",
+            success: function () {
                 alert("수정성공");
                 location.href = "/board/list";
             },
-            error : function () {
+            error: function () {
                 alert("수정실패");
             }
         });
 
-        $("#delete").click(function (){
-            $.ajax({
-                url : "http://localhost:8081/api/boards" + $("#board_idx").val(),
-                type : "DELETE",
-                success : function() {
-                    alert("삭제성공");
-                    location.href = "/board/list";
-                },
-                error : function () {
-                    alert("삭제실패");
-                }
-            });
+    });
+    $("#delete").click(function () {
+        $.ajax({
+            url: "http://localhost:8081/api/boards/" + $("#board_idx").val(),
+            type: "DELETE",
+            success: function () {
+                alert("삭제성공");
+                location.href = "/board/list";
+            },
+            error: function () {
+                alert("삭제실패");
+            }
         });
     });
+
 </script>
 </body>
 </html>

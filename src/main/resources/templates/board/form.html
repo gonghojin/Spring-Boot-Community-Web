@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <title>Board Form</title>
@@ -67,7 +67,6 @@
         <button th:if="${board?.idx}" type="button" id="update" class="btn btn-info">수정</button>
         <button th:if="${board?.idx}" type="button" id="delete" class="btn btn-danger">삭제</button>
     </div>
-
     <div th:replace="layout/footer::footer"></div>
 </div>
 <script th:src="@{/js/jquery.min.js}"></script>
@@ -86,6 +85,12 @@
             data: jsonData,
             contentType: "application/json",
             dataType: "json",
+            /**
+             * security 적용 후 테스트
+             */
+            headers: {
+                "Authorization" : "Basic " + btoa("gongdel" + ":" + "test") // 권한 인증에 대한 기본 형식
+            },                                                              // btoa()는 문자열을 base64로 인코딩해주는 함수
             success: function () {
                 alert("저장성공");
                 location.href = "/board/list";
